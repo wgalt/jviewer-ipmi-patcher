@@ -29,7 +29,29 @@ status/sense@53..56, DataLen@57 (LE), data@61. Response = request's first 62 byt
 
 - CD-ROM (2048-byte sectors, read-only): TEST UNIT READY, READ CAPACITY, READ(10/12), READ TOC (formats 0/1, LBA/MSF), START STOP, PREVENT ALLOW
 - Floppy / hard disk (512-byte sectors, read/write, file-locked): the above minus TOC, plus WRITE(10), FORMAT UNIT, READ FORMAT CAPACITIES, MODE SENSE(6/10)
-- Physical host drives are not supported (image files only).
+
+### Differences from the native libraries
+Not implemented:
+- **Physical drives.** The natives could redirect real CD/DVD drives, floppies, USB sticks and hard disks
+  (Linux: `/dev` scan, device locking, SCSI passthrough; macOS: IOKit `IOCDMedia`/`IODVDMedia` and raw
+  `/dev/diskN`). The drive lists are now always empty, so only image files can be redirected.
+- **Keyboard-layout auto-detection.** The Linux native parsed `xprop -root _XKB_RULES_NAMES` (us/fr/de/es/jp);
+  the macOS native returned a constant. Now always US; pick another layout from the *Keyboard Layout* menu.
+- **Lock-key sync** (see Limitations).
+- **FAT boot-sector safeguard.** When the remote machine wrote sector 0 of a floppy/HDD image, the natives
+  preserved some BPB geometry fields (hidden sectors, sectors/track, heads, drive number) from the original.
+  Writes are now stored exactly as sent.
+- Version strings (`getVersion`) report `pure-java`. Internal native helpers that Java never called
+  (create image from physical floppy, filesystem-type probe) were not ported.
+
+Behaves slightly differently:
+- READ range check covers `lba + count` (the native CD code only compared the sector count to the image size).
+- "Medium changed" unit attention is reported once, on the first TEST UNIT READY or READ CAPACITY after
+  connecting (the native floppy/HDD code returned it for whichever command came first).
+- READ TOC also answers format 1 (session info), and the lead-out address honours the LBA/MSF bit.
+- Writes to a read-only image return sense 07/27/00 (write protected); MODE SENSE sets the WP bit.
+- An image file is opened read/write only for floppy/HDD and when writable, with an advisory file lock;
+  otherwise it is redirected read-only (the client then shows "Device redirected in Read Only Mode").
 
 Tested on a Linux host via the BMC: ISO mounted and read (virtual CD-ROM); a 64 MB MBR/FAT32 image and a
 1.44 MB FAT12 floppy image mounted, read and written, with the writes landing in the image files.
@@ -42,6 +64,10 @@ No native code, so any architecture works. Notes (untested on Linux so far):
 - HiDPI: add `-Dsun.java2d.uiScale=2` to `OPTS` in `run.sh` if the window is tiny.
 
 ## Limitations
+- Virtual media: image files only, no physical drives; keyboard layout defaults to US (see
+  [Differences from the native libraries](#differences-from-the-native-libraries)).
+- Disconnecting a virtual disk in JViewer while it is still mounted on the remote machine makes that kernel
+  retry/reset the USB device until the BMC reports the medium removed; unmount first.
 - Passing a password as `./run.sh host user pass` makes it visible in `ps`; prefer typing it in the dialog.
 - Lock-key state is not synchronised. The original native code read the local Num/Caps/Scroll Lock state and
   toggled local keys (via `java.awt.Robot`) to match the remote machine's LEDs; that is now a no-op

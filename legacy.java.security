@@ -4,3 +4,5 @@ jdk.tls.disabledAlgorithms=SSLv3, RC4, DES, NULL, anon
 jdk.certpath.disabledAlgorithms=MD2, RSA keySize < 512
 jdk.jar.disabledAlgorithms=MD2
 jdk.tls.legacyAlgorithms=
+# Fedora/RHEL OpenJDK: don't let the system crypto policy (/etc/crypto-policies) re-disable TLS 1.0 / SHA-1.
+security.useSystemPropsFile=false

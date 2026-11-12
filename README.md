@@ -34,5 +34,12 @@ status/sense@53..56, DataLen@57 (LE), data@61. Response = request's first 62 byt
 Tested on a Linux host via the BMC: ISO mounted and read (virtual CD-ROM); a 64 MB MBR/FAT32 image and a
 1.44 MB FAT12 floppy image mounted, read and written, with the writes landing in the image files.
 
+## Linux
+No native code, so any architecture works. Notes (untested on Linux so far):
+- Needs a non-headless JRE/JDK (e.g. `openjdk-25-jdk`, not `-jre-headless`) and an X11/XWayland session.
+- Fedora/RHEL system crypto policies are opted out of (`security.useSystemPropsFile=false`,
+  `-Djava.security.disableSystemPropertiesFile=true`) so TLS 1.0 to the BMC stays allowed.
+- HiDPI: add `-Dsun.java2d.uiScale=2` to `OPTS` in `run.sh` if the window is tiny.
+
 ## Limitations
 - Passing a password as `./run.sh host user pass` makes it visible in `ps`; prefer typing it in the dialog.

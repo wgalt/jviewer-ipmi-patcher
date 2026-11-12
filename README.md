@@ -43,3 +43,9 @@ No native code, so any architecture works. Notes (untested on Linux so far):
 
 ## Limitations
 - Passing a password as `./run.sh host user pass` makes it visible in `ps`; prefer typing it in the dialog.
+- Lock-key state is not synchronised. The original native code read the local Num/Caps/Scroll Lock state and
+  toggled local keys (via `java.awt.Robot`) to match the remote machine's LEDs; that is now a no-op
+  (`FloppyRedir.GetLEDStatus` echoes the remote state). Pressing a lock key still sends it to the remote machine,
+  and the status bar's Num/Caps/Scroll indicators show the remote state, but if the two start out different they
+  stay different until you press the key. (The macOS native version never worked anyway: it linked against a
+  long-gone X11 path.)

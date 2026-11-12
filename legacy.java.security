@@ -1,0 +1,6 @@
+# Loaded via -Djava.security.properties=... ; relaxes JDK defaults so the 2017-era
+# AMI BMC TLS stack can be reached. Only used by the JViewer process.
+jdk.tls.disabledAlgorithms=SSLv3, RC4, DES, NULL, anon
+jdk.certpath.disabledAlgorithms=MD2, RSA keySize < 512
+jdk.jar.disabledAlgorithms=MD2
+jdk.tls.legacyAlgorithms=

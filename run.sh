@@ -7,7 +7,7 @@ D="$(cd "$(dirname "$0")" && pwd)"
 [ -f "$D/dist/JViewer.jar" ] || "$D/build.sh"
 JAVA="${JAVA:-java}"
 OPTS=(-Djava.security.properties="$D/legacy.java.security" -Dhttps.protocols=TLSv1
-      -Djdk.tls.client.protocols=TLSv1 -Dsun.java2d.metal=true --enable-native-access=ALL-UNNAMED
+      -Djdk.tls.client.protocols=TLSv1 -Dsun.java2d.metal=true
       --add-opens java.desktop/java.awt=ALL-UNNAMED)
 if [ "${1:-}" = "--" ]; then shift; exec "$JAVA" "${OPTS[@]}" -jar "$D/dist/JViewer.jar" "$@"; fi
 ARGS=(-apptype StandAlone)

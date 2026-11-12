@@ -17,14 +17,6 @@ cpatch() { local f="$B/main/$1"; shift; python3 -I tools/cpatch.py "$f" "$f.new"
 cpatch com/ami/kvm/jviewer/gui/StandAloneConnectionDialog.class \
   'java/lang/ArrayIndexOutOfBoundsException=java/lang/IndexOutOfBoundsException'
 
-# Standalone mode extracts native vmedia wrappers via JViewer.class.getResourceAsStream("lib/<os><bits>/...")
-# (relative, so they live under com/ami/kvm/jviewer/lib/);
-# the firmware ships them in separate JNLP nativelib jars, so bundle them in.
-for pair in Mac64:mac64 Mac32:mac32 Linux_x86_64:linux64 Linux_x86_32:linux32 Win64:win64 Win32:win32; do
-  L="$B/main/com/ami/kvm/jviewer/lib/${pair#*:}"; mkdir -p "$L"
-  unzip -q -o "orig/${pair%%:*}.jar" -x 'META-INF/*' -d "$L"
-done
-
 # 2. On fallback login the dialog forces https.protocols=SSLv3, which modern JDKs no longer have
 cpatch 'com/ami/kvm/jviewer/gui/StandAloneConnectionDialog$Validator.class' 'SSLv3=TLSv1'
 
@@ -37,7 +29,7 @@ open(f,'wb').write(d.replace(old, bytes.fromhex('04b30005')))
 PY
 fi
 
-# 3. Patched classes recompiled from source (patch-src), if any
+# 3. Patched classes recompiled from source (patch-src): pure-Java vmedia (ImageDisk + *Redir), no native libs
 if [ -n "$(find patch-src -name '*.java' 2>/dev/null)" ]; then
   javac --release 8 -nowarn -encoding UTF-8 -cp "$B/main:$B/soc" -d "$B/main" $(find patch-src -name '*.java')
 fi

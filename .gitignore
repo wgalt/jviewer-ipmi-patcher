@@ -2,3 +2,5 @@ build/
 dist/
 *.zip
 .DS_Store
+*.iso
+*.img

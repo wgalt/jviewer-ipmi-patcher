@@ -5,6 +5,7 @@
 # jars without classes (the per-OS native libraries) are ignored. JVIEWER_DEBUG=1 enables console logging.
 set -euo pipefail
 D="$(cd "$(dirname "$0")" && pwd)"
+. "$D/tools/deps.sh"; check_deps build   # warnings only
 OUT=dist
 if [ "${1:-}" = "-o" ]; then OUT="$2"; shift 2; fi
 [ $# -gt 0 ] || { echo "usage: $0 [-o OUT_DIR] JAR|DIR ...   (JViewer.jar, JViewer-SOC.jar, ... from the BMC)" >&2; exit 2; }

@@ -14,6 +14,8 @@ the patches are applied to the bytecode by pattern rather than at fixed offsets,
 ```
 
 Requirements: a JDK (11 or newer; `javac` and `jar` are used to build, OpenJDK 25+ tested), `python3` and `unzip`.
+`run.sh` and `build.sh` warn about anything missing, such as a JRE or headless Java, an old Java, missing tools or
+no X display, with an install hint, but carry on anyway (`JVIEWER_SKIP_CHECKS=1` silences them).
 
 ## First launch (JNLP)
 Open the remote console from the BMC web UI as usual and save the `jviewer.jnlp` it offers instead of opening

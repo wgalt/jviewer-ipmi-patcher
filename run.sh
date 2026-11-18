@@ -7,11 +7,12 @@
 #   ./run.sh -- <raw JViewer args...>               raw arguments (jar picked by -hostname, else the last one)
 # JVIEWER_JAR=path overrides the jar for standalone/raw launches (e.g. one made with ./build.sh).
 # TLS_PROTOCOLS overrides the client TLS versions (default TLSv1, e.g. TLS_PROTOCOLS=TLSv1.2,TLSv1).
-# JVIEWER_DEBUG=1 builds with console logging.
+# JVIEWER_DEBUG=1 builds with console logging. JVIEWER_SKIP_CHECKS=1 skips the dependency warnings.
 set -euo pipefail
 D="$(cd "$(dirname "$0")" && pwd)"
 CACHE="$D/cache"
 JAVA="${JAVA:-java}"
+. "$D/tools/deps.sh"; check_deps run   # warnings only
 TLS="${TLS_PROTOCOLS:-TLSv1}"
 NET=(-Djava.security.properties="$D/legacy.java.security" -Dhttps.protocols="$TLS"
      -Djdk.tls.client.protocols="$TLS" -Djava.security.disableSystemPropertiesFile=true)

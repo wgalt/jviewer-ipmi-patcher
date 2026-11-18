@@ -1,8 +1,8 @@
 # JViewer (AMI MegaRAC KVM) for modern OpenJDK
 
 Runs the AMI MegaRAC JViewer KVM client, which BMCs serve as a Java Web Start app, on a modern OpenJDK on Linux,
-macOS or Windows (tested on OpenJDK 25+ on Linux and Apple Silicon macOS, against an ASRock EPC612D4I BMC with
-firmware 07.12.00; Windows is untested).
+macOS or Windows (tested on OpenJDK 25+ on Linux, Apple Silicon macOS and Windows 10, against an ASRock EPC612D4I BMC with
+firmware 07.12.00).
 
 This repository contains no AMI code. The client is downloaded from your own BMC and patched locally:
 the patches are applied to the bytecode by pattern rather than at fixed offsets, so other JViewer versions
@@ -126,8 +126,10 @@ No native code, so any architecture works. Tested on Debian (X11) with KVM video
 - HiDPI: `JVIEWER_JAVA_OPTS=-Dsun.java2d.uiScale=2 ./run.sh …` if the window is tiny.
 
 ## Windows
-Untested. JViewer itself needs no native code any more, and `run.cmd`/`build.cmd` run the same Java tool as
-on Linux and macOS. Virtual media works with image files only, as elsewhere.
+JViewer itself needs no native code any more, and `run.cmd`/`build.cmd` run the same Java tool as on Linux
+and macOS. Tested on Windows 10 with the Microsoft Build of OpenJDK 25 (`winget install Microsoft.OpenJDK.25`):
+JNLP launch with KVM video. Standalone login and virtual media are not yet tested there; virtual media works
+with image files only, as elsewhere.
 
 ## Limitations
 - Virtual media: image files only, no physical drives; keyboard layout defaults to US (see

@@ -31,7 +31,7 @@ import org.w3c.dom.NodeList;
  * <pre>java tools/Jnlp.java JNLP CACHE_DIR</pre>
  *
  * Jars go to CACHE_DIR/&lt;host_port&gt;/ (replaced on every run; native-library jars are skipped).
- * stdout is a list of NUL-terminated records: {@code D:<jar dir>}, {@code M:<main class>},
+ * stdout is a list of NUL-terminated records: {@code D:<jar dir>}, {@code H:<codebase host>}, {@code M:<main class>},
  * {@code P:<name>=<value>} (JNLP properties) and {@code A:<argument>} (in order).
  * Arguments usually include a session token, so they are only ever printed, never written to disk.
  * The BMC's certificate is self-signed, so it is not verified (the same as JViewer itself).
@@ -96,6 +96,7 @@ public class Jnlp {
 
       PrintStream out = new PrintStream(System.out, false, StandardCharsets.UTF_8);
       rec(out, "D:" + dir);
+      rec(out, "H:" + base.getHost());
       NodeList app = root.getElementsByTagName("application-desc");
       Element ad = app.getLength() > 0 ? (Element) app.item(0) : null;
       if (ad != null && !ad.getAttribute("main-class").trim().isEmpty()) rec(out, "M:" + ad.getAttribute("main-class").trim());

@@ -1,13 +1,13 @@
 #!/bin/bash
-# Build a patched JViewer from the original (signed, firmware) jars.
-#   ./build.sh [-o OUT_DIR] [JAR|DIR ...]      default: ./build.sh -o dist orig
+# Build a patched JViewer from the original (signed, firmware) jars. run.sh does this for you from a JNLP.
+#   ./build.sh [-o OUT_DIR] JAR|DIR ...        OUT_DIR defaults to dist
 # Every jar containing classes is merged (first one wins on duplicates) into OUT_DIR/JViewer.jar;
 # jars without classes (the per-OS native libraries) are ignored. JVIEWER_DEBUG=1 enables console logging.
 set -euo pipefail
 D="$(cd "$(dirname "$0")" && pwd)"
 OUT=dist
 if [ "${1:-}" = "-o" ]; then OUT="$2"; shift 2; fi
-[ $# -gt 0 ] || set -- "$D/orig"
+[ $# -gt 0 ] || { echo "usage: $0 [-o OUT_DIR] JAR|DIR ...   (JViewer.jar, JViewer-SOC.jar, ... from the BMC)" >&2; exit 2; }
 JARS=()
 for a in "$@"; do
   if [ -d "$a" ]; then

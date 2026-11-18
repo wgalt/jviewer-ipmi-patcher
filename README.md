@@ -1,43 +1,55 @@
 # JViewer (AMI MegaRAC KVM) for modern OpenJDK
 
-KVM client from the ASRock EPC612D4I BMC firmware 07.12.00, patched to run on OpenJDK 25 (tested on Apple Silicon macOS).
-The patches are applied to the bytecode by pattern rather than at fixed offsets, so other JViewer versions
-(other boards/firmware) can be patched too, straight from the BMC's own `jviewer.jnlp`.
+Runs the AMI MegaRAC JViewer KVM client, which BMCs serve as a Java Web Start app, on a modern OpenJDK
+(tested on OpenJDK 25+ on Linux and Apple Silicon macOS, against an ASRock EPC612D4I BMC with firmware 07.12.00).
+
+This repository contains no AMI code. The client is downloaded from your own BMC and patched locally:
+the patches are applied to the bytecode by pattern rather than at fixed offsets, so other JViewer versions
+(other boards and firmware) should work too, although only 07.12.00 has been tested.
 
 ```bash
-./run.sh nas-mgmt                       # standalone login dialog, using the bundled 07.12.00 jars
-./run.sh ~/Downloads/jviewer.jnlp       # this BMC's own JViewer: fetch its jars, patch (cached), launch
-./build.sh                              # rebuild dist/ from orig/ (JVIEWER_DEBUG=1 for console logging)
-./build.sh -o out path/to/jars/         # patch any other set of JViewer jars
+./run.sh ~/Downloads/jviewer.jnlp       # first time: fetch this BMC's JViewer, patch it (cached) and launch
+./run.sh nas-mgmt [user] [password]     # afterwards: standalone login dialog, with that host's cached jars
+./run.sh                                # standalone, with the most recently used jars
 ```
 
-`orig/` holds the unmodified jars from the firmware's cramfs `www` partition (`Java/release/`).
+Requirements: a JDK (11 or newer; `javac` and `jar` are used to build, OpenJDK 25+ tested), `python3` and `unzip`.
 
-## Other JViewer versions (JNLP)
-Launch the remote console from the BMC web UI as usual and save the `jviewer.jnlp` it offers instead of opening
+## First launch (JNLP)
+Open the remote console from the BMC web UI as usual and save the `jviewer.jnlp` it offers instead of opening
 it with Java Web Start, then `./run.sh jviewer.jnlp` (a `https://…/jviewer.jnlp` URL works too, if the BMC serves it
 without a login cookie). `tools/Jnlp.java`:
 - downloads the `<jar>` resources from the JNLP's codebase into `cache/jars/<host_port>/` (refreshed on every
-  launch; `<nativelib>` jars are skipped, they are not needed). The BMC certificate is not verified, as in JViewer.
+  JNLP launch; `<nativelib>` jars are skipped, they are not needed). The BMC certificate is not verified, as in JViewer.
 - hands the `application-desc` main class and arguments (which include a one-time session token) and any
   `<property>` values to `run.sh`, which launches `java -cp … <main> <args>`. The arguments are not written to disk.
 
 The jars are merged into one patched `JViewer.jar` under `cache/build/<hash>/`, rebuilt only when the BMC's jars
-or the patches change (old builds can be deleted with `rm -rf cache/build`).
-The JNLP is usually only valid for one launch, so download a fresh one each time.
+or the patches change (old builds can be deleted with `rm -rf cache/build`). The JNLP is usually only valid for one
+launch, so download a fresh one each time you use this mode.
 
-If a newer BMC no longer accepts TLS 1.0, allow newer versions: `TLS_PROTOCOLS=TLSv1.2,TLSv1 ./run.sh …`.
+## Standalone launches
+`run.sh` remembers which build belongs to the JNLP's codebase host (`cache/hosts/<host>`), so afterwards
+`./run.sh <host>` opens JViewer's own login dialog (username/password instead of a session token) with that
+BMC's jars. Use the same host name or IP as in the JNLP's codebase; with no host, the last one is used.
+The web port defaults to 443 (`PORT=… ./run.sh <host>`). `./run.sh -- <args…>` passes raw JViewer arguments.
+
+To use jars obtained some other way (e.g. from a firmware image's `Java/release/` directory):
+`./build.sh -o out path/to/jars/` and then `JVIEWER_JAR=out/JViewer.jar ./run.sh <host>`.
+
+## Options
+- `TLS_PROTOCOLS=TLSv1.2,TLSv1 ./run.sh …`: if a newer BMC no longer accepts TLS 1.0 (the default is TLSv1 only).
+- `JVIEWER_DEBUG=1 ./run.sh …jnlp`: build with JViewer's console logging enabled (cached separately).
 
 `tools/patch.py` prints what it patched and warns when it finds nothing to patch or a `native` method it has no
 replacement for (that feature then fails with `UnsatisfiedLinkError`; add a method to `VMediaNatives`).
-Only the 07.12.00 jars have actually been tested.
 
 ## Fixes
 | Problem on modern Java | Fix |
 |---|---|
 | Startup crash in `getSupportedLocales` (`ArrayList.get(-1)` now throws `IndexOutOfBoundsException`) | bytecode: every `catch (ArrayIndexOutOfBoundsException)` widened to `IndexOutOfBoundsException` |
 | Fallback login sets `https.protocols=SSLv3` (removed from JDK) → "Connection Failure" | bytecode: `SSLv3` dropped from protocol-list string constants (→ `TLSv1`) |
-| BMC speaks only TLS 1.0 / `TLS_RSA_WITH_AES_256_CBC_SHA`, 1024-bit SHA-1 cert | `legacy.java.security` + TLSv1-only flags in `run.sh` |
+| BMC speaks only TLS 1.0 / `TLS_RSA_WITH_AES_256_CBC_SHA`, 1024-bit SHA-1 cert | `legacy.java.security` + TLSv1-only flags in `run.sh` (`TLS_PROTOCOLS` to change) |
 | Native vmedia libs (x86 only, missing from jar in standalone mode) → `FloppyRedir` init crash killed the network listener (blank video) | replaced entirely by pure Java, see below |
 | Reflection into `AWTEvent.bdata` blocked by module system | `--add-opens java.desktop/java.awt=ALL-UNNAMED` |
 | Jar signatures invalid after patching | stripped; all jars merged into one `JViewer.jar` |
@@ -83,8 +95,8 @@ Tested on a Linux host via the BMC: ISO mounted and read (virtual CD-ROM); a 64 
 1.44 MB FAT12 floppy image mounted, read and written, with the writes landing in the image files.
 
 ## Linux
-No native code, so any architecture works. Notes (untested on Linux so far):
-- Needs a non-headless JRE/JDK (e.g. `openjdk-25-jdk`, not `-jre-headless`) and an X11/XWayland session.
+No native code, so any architecture works. Tested on Debian (X11) with KVM video and CD-ROM redirection. Notes:
+- Needs a non-headless JDK (e.g. `openjdk-25-jdk`, not `-jre-headless`) and an X11/XWayland session.
 - Fedora/RHEL system crypto policies are opted out of (`security.useSystemPropsFile=false`,
   `-Djava.security.disableSystemPropertiesFile=true`) so TLS 1.0 to the BMC stays allowed.
 - HiDPI: add `-Dsun.java2d.uiScale=2` to `OPTS` in `run.sh` if the window is tiny.

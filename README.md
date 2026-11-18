@@ -5,8 +5,9 @@ macOS or Windows (tested on OpenJDK 25+ on Linux, Apple Silicon macOS and Window
 firmware 07.12.00).
 
 This repository contains no AMI code. The client is downloaded from your own BMC and patched locally:
-the patches are applied to the bytecode by pattern rather than at fixed offsets, so other JViewer versions
-(other boards and firmware) should work too, although only 07.12.00 has been tested.
+the patches are applied to the bytecode by pattern rather than at fixed offsets, in the hope that other JViewer
+versions (other boards and firmware) work too. Honestly, I have no idea whether they do: only 07.12.00 has been
+tested.
 
 A similar project, [ipmi-kvm-docker](https://github.com/solarkennedy/ipmi-kvm-docker), runs the unmodified JViewer
 inside a Docker container with a specially configured old Java version. This project instead aims to run it

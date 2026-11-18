@@ -4,3 +4,5 @@ dist/
 .DS_Store
 *.iso
 *.img
+cache/
+__pycache__/

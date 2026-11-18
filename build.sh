@@ -1,39 +1,41 @@
 #!/bin/bash
-# Build patched JViewer jars from the firmware originals in ./orig into ./dist
+# Build a patched JViewer from the original (signed, firmware) jars.
+#   ./build.sh [-o OUT_DIR] [JAR|DIR ...]      default: ./build.sh -o dist orig
+# Every jar containing classes is merged (first one wins on duplicates) into OUT_DIR/JViewer.jar;
+# jars without classes (the per-OS native libraries) are ignored. JVIEWER_DEBUG=1 enables console logging.
 set -euo pipefail
-cd "$(dirname "$0")"
-B=build; rm -rf "$B" dist   # dist/Jar is JViewer's native-lib cache, cleared too
-mkdir -p "$B/main" "$B/soc" dist
-(cd "$B/main" && unzip -q ../../orig/JViewer.jar)
-(cd "$B/soc"  && unzip -q ../../orig/JViewer-SOC.jar)
+D="$(cd "$(dirname "$0")" && pwd)"
+OUT=dist
+if [ "${1:-}" = "-o" ]; then OUT="$2"; shift 2; fi
+[ $# -gt 0 ] || set -- "$D/orig"
+JARS=()
+for a in "$@"; do
+  if [ -d "$a" ]; then
+    # main jar first so its manifest and classes take precedence
+    for j in "$a"/JViewer.jar "$a"/*.jar; do [ -f "$j" ] && JARS+=("$(cd "$(dirname "$j")" && pwd)/$(basename "$j")"); done
+  else JARS+=("$(cd "$(dirname "$a")" && pwd)/$(basename "$a")"); fi
+done
+mkdir -p "$OUT"; OUT="$(cd "$OUT" && pwd)"
+B="$(mktemp -d "${TMPDIR:-/tmp}/jviewer-build.XXXXXX")"; trap 'rm -rf "$B"' EXIT
+rm -rf "$OUT/Jar" "$OUT/JViewer.jar" "$OUT/JViewer-SOC.jar"   # Jar/ is JViewer's native-lib cache
+mkdir -p "$B/classes"
+MAIN=""; seen=" "
+for j in "${JARS[@]}"; do
+  case "$seen" in *" $j "*) continue;; esac; seen+="$j "
+  case "$(unzip -Z1 "$j")" in *.class*) ;; *) continue;; esac   # skip native-library jars
+  echo "build: + $(basename "$j")"
+  (cd "$B/classes" && unzip -qn "$j")
+  [ -n "$MAIN" ] || MAIN="$(unzip -p "$j" META-INF/MANIFEST.MF | tr -d '\r' | sed -n 's/^Main-Class: *//p')"
+done
+[ -n "$(find "$B/classes" -name '*.class' | head -1)" ] || { echo "build: no classes found in: ${JARS[*]}" >&2; exit 1; }
+MAIN="${MAIN:-com.ami.kvm.jviewer.JViewer}"
 # Strip the (now invalid) code signatures
-rm -f "$B"/*/META-INF/*.SF "$B"/*/META-INF/*.RSA "$B"/*/META-INF/*.DSA
-for d in "$B"/*/META-INF; do printf 'Manifest-Version: 1.0\n' > "$d/MANIFEST.MF"; done
-printf 'Main-Class: com.ami.kvm.jviewer.JViewer\nClass-Path: JViewer-SOC.jar\n' >> "$B/main/META-INF/MANIFEST.MF"
+rm -rf "$B/classes/META-INF"; mkdir "$B/classes/META-INF"
+printf 'Manifest-Version: 1.0\nMain-Class: %s\n' "$MAIN" > "$B/manifest"
 
-cpatch() { local f="$B/main/$1"; shift; python3 -I tools/cpatch.py "$f" "$f.new" "$@"; mv "$f.new" "$f"; }
+# Pure-Java vmedia (ImageDisk + VMediaNatives) compiled in, then bytecode patches (see tools/patch.py)
+javac --release 8 -nowarn -encoding UTF-8 -d "$B/classes" $(find "$D/patch-src" -name '*.java')
+python3 -I "$D/tools/patch.py" "$B/classes" $([ "${JVIEWER_DEBUG:-0}" = 1 ] && echo --debug)
 
-# 1. Modern ArrayList.get(-1) throws IndexOutOfBoundsException, not ArrayIndexOutOfBoundsException
-cpatch com/ami/kvm/jviewer/gui/StandAloneConnectionDialog.class \
-  'java/lang/ArrayIndexOutOfBoundsException=java/lang/IndexOutOfBoundsException'
-
-# 2. On fallback login the dialog forces https.protocols=SSLv3, which modern JDKs no longer have
-cpatch 'com/ami/kvm/jviewer/gui/StandAloneConnectionDialog$Validator.class' 'SSLv3=TLSv1'
-
-# Debug build: JVIEWER_DEBUG=1 ./build.sh  -> Debug.MODE=1 (log to console) instead of 2 (silent)
-if [ "${JVIEWER_DEBUG:-0}" = 1 ]; then
-  python3 -I - "$B/main/com/ami/kvm/jviewer/Debug.class" <<'PY'
-import sys; f=sys.argv[1]; d=open(f,'rb').read()
-old=bytes.fromhex('05b30005'); assert d.count(old)==1, d.count(old)
-open(f,'wb').write(d.replace(old, bytes.fromhex('04b30005')))
-PY
-fi
-
-# 3. Patched classes recompiled from source (patch-src): pure-Java vmedia (ImageDisk + *Redir), no native libs
-if [ -n "$(find patch-src -name '*.java' 2>/dev/null)" ]; then
-  javac --release 8 -nowarn -encoding UTF-8 -cp "$B/main:$B/soc" -d "$B/main" $(find patch-src -name '*.java')
-fi
-
-(cd "$B/main" && jar --create --file ../../dist/JViewer.jar --manifest META-INF/MANIFEST.MF $(ls | grep -v META-INF))
-(cd "$B/soc"  && jar --create --file ../../dist/JViewer-SOC.jar --manifest META-INF/MANIFEST.MF $(ls | grep -v META-INF))
-echo "Built dist/JViewer.jar dist/JViewer-SOC.jar"
+(cd "$B/classes" && jar --create --file "$OUT/JViewer.jar" --manifest "$B/manifest" $(ls | grep -v META-INF))
+echo "Built $OUT/JViewer.jar"

@@ -7,15 +7,29 @@ This repository contains no AMI code. The client is downloaded from your own BMC
 the patches are applied to the bytecode by pattern rather than at fixed offsets, so other JViewer versions
 (other boards and firmware) should work too, although only 07.12.00 has been tested.
 
-```bash
-./run.sh ~/Downloads/jviewer.jnlp       # first time: fetch this BMC's JViewer, patch it (cached) and launch
-./run.sh nas-mgmt [user] [password]     # afterwards: standalone login dialog, with that host's cached jars
-./run.sh                                # standalone, with the most recently used jars
-```
+![JViewer showing a remote console, with a Debian ISO redirected as a virtual CD-ROM](docs/kvm-vmedia.png)
 
-Requirements: a JDK (11 or newer; `javac` and `jar` are used to build, OpenJDK 25+ tested), `python3` and `unzip`.
-`run.sh` and `build.sh` warn about anything missing, such as a JRE or headless Java, an old Java, missing tools or
-no X display, with an install hint, but carry on anyway (`JVIEWER_SKIP_CHECKS=1` silences them).
+## Requirements
+- A JDK, 11 or newer (OpenJDK 25+ tested). It must be a full JDK, not a JRE, and not a headless build.
+- `python3`
+- `unzip`
+- On Linux, an X11 or XWayland session
+
+`run.sh` and `build.sh` warn about anything missing, with an install hint, but carry on anyway
+(`JVIEWER_SKIP_CHECKS=1` silences them).
+
+## Getting started
+1. In the BMC web UI, open the remote console and save the `jviewer.jnlp` it offers.
+2. First run: fetch this BMC's JViewer, patch it and launch it with the session from the JNLP:
+   ```bash
+   ./run.sh ~/Downloads/jviewer.jnlp
+   ```
+3. Later runs: standalone, logging in with your BMC username and password (no JNLP needed):
+   ```bash
+   ./run.sh <bmc-host>
+   ```
+
+![JViewer's standalone login dialog](docs/standalone-login.png)
 
 ## First launch (JNLP)
 Open the remote console from the BMC web UI as usual and save the `jviewer.jnlp` it offers instead of opening

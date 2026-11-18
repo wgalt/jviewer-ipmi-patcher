@@ -8,6 +8,10 @@ This repository contains no AMI code. The client is downloaded from your own BMC
 the patches are applied to the bytecode by pattern rather than at fixed offsets, so other JViewer versions
 (other boards and firmware) should work too, although only 07.12.00 has been tested.
 
+A similar project, [ipmi-kvm-docker](https://github.com/solarkennedy/ipmi-kvm-docker), runs the unmodified JViewer
+inside a Docker container with a specially configured old Java version. This project instead aims to run it
+natively, on the JDK you already have.
+
 ![JViewer showing a remote console, with a Debian ISO redirected as a virtual CD-ROM](docs/kvm-vmedia.png)
 
 ## Requirements
